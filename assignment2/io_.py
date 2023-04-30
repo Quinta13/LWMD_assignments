@@ -1,8 +1,11 @@
 """
-Input - output operations
+This module collects all operations related to input / output
 """
+
 import os
 import re
+import urllib.request
+import zipfile
 from os import path as path
 from typing import Tuple, List
 
@@ -11,10 +14,22 @@ import pandas as pd
 from scipy import sparse
 from scipy.sparse import csr_matrix
 
-from settings import DATASETS_DIR_NAME, CORPUS, QUERIES, TEST, VECTOR_DIR, SPARSE_DOCS, SPARSE_QUERY, DENSE_DOCS, \
+from assignment2.settings import DATASETS_DIR_NAME, CORPUS, QUERIES, TEST, VECTOR_DIR, SPARSE_DOCS, SPARSE_QUERY, \
+    DENSE_DOCS, \
     DENSE_QUERY, SCORE_DIR, SPARSE_SCORES, FULL_SCORES, DENSE_SCORES, EVALUATION_DIR, IMAGES_DIR_NAME, EVALUATION_FILE, \
     LOG
 
+
+# LOGGER
+def _log(info: str):
+    """
+    Log message if enabled from settings
+    :param info: information to log
+    """
+    _log(info)
+
+
+# INPUT DIRECTORY and FILES
 
 def get_root_dir() -> str:
     """
@@ -47,6 +62,8 @@ def get_files(data_name: str) -> Tuple[str, str, str]:
            path.join(get_dataset_dir(), data_name, TEST)
 
 
+# VECTORIZATION DIRECTORY and FILES
+
 def get_vector_dir(data_name: str) -> str:
     """
     Return path to folder containing vectorized documents
@@ -65,7 +82,7 @@ def get_sparse_vector_files(data_name: str) -> Tuple[str, str]:
 
     vector_dir = get_vector_dir(data_name=data_name)
 
-    return path.join(vector_dir, f"{SPARSE_DOCS}.npz"),\
+    return path.join(vector_dir, f"{SPARSE_DOCS}.npz"), \
            path.join(vector_dir, f"{SPARSE_QUERY}.npz")
 
 
@@ -81,6 +98,8 @@ def get_dense_vector_files(data_name: str) -> Tuple[str, str]:
     return path.join(vector_dir, f"{DENSE_DOCS}.npy"), \
            path.join(vector_dir, f"{DENSE_QUERY}.npy")
 
+
+# SCORE DIRECTORY and FILES
 
 def get_scores_dir(data_name: str) -> str:
     """
@@ -100,10 +119,12 @@ def get_scores_files(data_name: str) -> Tuple[str, str, str]:
 
     score_dir = get_scores_dir(data_name=data_name)
 
-    return path.join(score_dir, f"{SPARSE_SCORES}.npy"),\
-           path.join(score_dir, f"{DENSE_SCORES}.npy"),\
+    return path.join(score_dir, f"{SPARSE_SCORES}.npy"), \
+           path.join(score_dir, f"{DENSE_SCORES}.npy"), \
            path.join(score_dir, f"{FULL_SCORES}.npy")
 
+
+# EVALUATION DIRECTORY and FILES
 
 def get_evaluation_dir(data_name: str) -> str:
     """
@@ -154,6 +175,8 @@ def get_evaluation_files(data_name: str) -> List[Tuple[int, pd.DataFrame]]:
     return out
 
 
+# IMAGE DIRECTORY
+
 def get_images_dir(data_name: str) -> str:
     """
     Return path to folder containing images results
@@ -163,17 +186,49 @@ def get_images_dir(data_name: str) -> str:
     return path.join(get_dataset_dir(), data_name, IMAGES_DIR_NAME)
 
 
+# DOWNLOAD
+
+def download_and_unzip(url: str, output_dir: str):
+    """
+    Download and unzip datasets from url
+    :param url: url of compressed file
+    :param output_dir: directory where to store dataset
+    """
+
+    # Download the zip file
+    zip_file_name = url.split("/")[-1]
+    zip_file_path = os.path.join(output_dir, zip_file_name)
+    urllib.request.urlretrieve(url, zip_file_path)
+
+    # Extract the zip file
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        zip_ref.extractall(output_dir)
+
+    # Delete the zip file
+    os.remove(zip_file_path)
+
+    # Remove the .zip extension from the extracted file
+    extracted_file_name = zip_file_name.split(".")[0]
+    extracted_file_path = os.path.join(output_dir, extracted_file_name)
+    os.rename(os.path.join(output_dir, extracted_file_name), extracted_file_path)
+
+    return extracted_file_path
+
+
+# IO OPERATIONS for SPECIFIC FORMAT
+
 def make_dir(path_: str):
     """
     Create directory or ignore if it already exists
     """
     try:
         os.makedirs(path_)
-        if LOG:
-            print(f"Creating directory {path_}")
+        _log(f"Creating directory {path_}")
     except OSError:
         pass  # ignore if already exists
 
+
+# JSONL
 
 def read_jsonl(path_: str) -> pd.DataFrame:
     """
@@ -181,10 +236,11 @@ def read_jsonl(path_: str) -> pd.DataFrame:
     :param path_: path to .json file
     :return: .jsonl file content as a dataframe
     """
-    if LOG:
-        print(f"Loading {path_}")
+    _log(f"Loading {path_}")
     return pd.read_json(path_, lines=True)
 
+
+# CSR MATRIX
 
 def save_sparse_matrix(mat: csr_matrix, path_: str):
     """
@@ -192,8 +248,7 @@ def save_sparse_matrix(mat: csr_matrix, path_: str):
     :param mat: sparse matrix
     :param path_: local file path
     """
-    if LOG:
-        print(f"Saving {path_}")
+    _log(f"Saving {path_}")
     sparse.save_npz(file=path_, matrix=mat)
 
 
@@ -203,10 +258,11 @@ def load_sparse_matrix(path_: str) -> csr_matrix:
     :param path_: local file path
     :return: sparse matrix
     """
-    if LOG:
-        print(f"Loading {path_}")
+    _log(f"Loading {path_}")
     return sparse.load_npz(file=path_)
 
+
+# NUMPY ARRAY
 
 def save_dense_matrix(mat: np.ndarray, path_: str):
     """
@@ -214,8 +270,7 @@ def save_dense_matrix(mat: np.ndarray, path_: str):
     :param mat: dense matrix
     :param path_: local file path
     """
-    if LOG:
-        print(f"Saving {path_}")
+    _log(f"Saving {path_}")
     np.save(file=path_, arr=mat)
 
 
@@ -225,10 +280,11 @@ def load_dense_matrix(path_: str) -> np.ndarray:
     :param path_: local file path
     :return: dense matrix
     """
-    if LOG:
-        print(f"Loading {path_}")
+    _log(f"Loading {path_}")
     return np.load(file=path_)
 
+
+# DATAFRAME
 
 def save_dataframe(df: pd.DataFrame, path_: str):
     """
@@ -236,8 +292,7 @@ def save_dataframe(df: pd.DataFrame, path_: str):
     :param df: dataframe
     :param path_: local file path
     """
-    if LOG:
-        print(f"Saving {path_}")
+    _log(f"Saving {path_}")
     df.to_csv(path_, index=False)
 
 
@@ -247,6 +302,5 @@ def load_dataframe(path_: str) -> pd.DataFrame:
     :param path_: local file path
     :return: dataframe
     """
-    if LOG:
-        print(f"Loading {path_}")
+    _log(f"Loading {path_}")
     return pd.read_csv(path_)

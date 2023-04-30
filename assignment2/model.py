@@ -1,6 +1,13 @@
 """
-TODO
+This module contains all classes part of the framework pipline
+    - BEIRDatasetDownload: dataset to download BEIR dataset
+    - Document: representation of an input document (and query)
+    - DocumentVectorizer: class uses for generate sparse and dense vectorization
+    - ScoresComputation: class that exploit vectorization to compute exaxt and partial scores
+    - RecallEvaluation: class which implement the general retrieval framework with partial scores combination
+    - RecallAnalysis: class for studying interaction of framework parameter
 """
+
 from __future__ import annotations
 
 import heapq
@@ -14,14 +21,43 @@ import pandas as pd
 from scipy.sparse import csr_matrix
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
-from io_ import get_files, read_jsonl, make_dir, save_sparse_matrix, save_dense_matrix, \
+from assignment2.io_ import get_files, read_jsonl, make_dir, save_sparse_matrix, save_dense_matrix, \
     load_sparse_matrix, load_dense_matrix, get_sparse_vector_files, get_vector_dir, get_dense_vector_files, \
     get_scores_dir, get_scores_files, get_images_dir, get_evaluation_dir, get_evaluation_file, save_dataframe, \
-    get_evaluation_files
-from settings import DEFAULT_LANGUAGE, CORPUS, QUERIES, EVALUATION_DIR, LOG
-from utils import tokenize, top_k
+    get_evaluation_files, get_dataset_dir, download_and_unzip
+from assignment2.settings import DEFAULT_LANGUAGE, CORPUS, QUERIES, EVALUATION_DIR, LOG
+from assignment2.utils import tokenize, top_k
+
+
+class BEIRDatasetDownload:
+    """
+    This class allows to download BEIR datasets
+    """
+
+    _URL_PREFIX = "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/"
+
+    def __init__(self, data_name: str):
+        """
+        :param data_name: dataset name
+        """
+
+        self._data_name = data_name
+
+    def download(self):
+        """
+        Download dataset in proper directory
+        """
+
+        url = self._URL_PREFIX + f"{self._data_name}.zip"
+        output_dir = get_dataset_dir()
+
+        make_dir(output_dir)
+
+        if LOG:
+            print(f"Downloading {self._data_name} dataset")
+
+        download_and_unzip(url=url, output_dir=output_dir)
 
 
 class Document:
@@ -359,7 +395,7 @@ class DocumentVectorizer:
 
 
 class ScoresComputation:
-    """ This class use sparse and dense vectors to compute scores """
+    """ This class use sparse and dense vectors to compute exact and partial scores """
 
     def __init__(self, data_name: str):
         """
@@ -440,7 +476,6 @@ class ScoresComputation:
         :return: sparse scores vectors
         """
         return self.sparse_query.dot(self.sparse_docs.transpose()).toarray()
-        # return cosine_similarity(X=self.sparse_query, Y=self.sparse_docs)
 
     def _compute_dense_score(self) -> np.ndarray:
         """
@@ -448,24 +483,26 @@ class ScoresComputation:
         :return: dense scores vectors
         """
         return self.dense_query.dot(self.dense_docs.transpose())
-        # return cosine_similarity(X=self.dense_query, Y=self.dense_docs)
 
     @property
     def sparse_scores(self) -> np.ndarray:
         """
-        :return: sparse score matrix
+        :return: sparse scores matrix
         """
         return self._sparse_scores
 
     @property
     def dense_scores(self) -> np.ndarray:
         """
-        :return: sparse score matrix
+        :return: sparse scores matrix
         """
         return self._dense_scores
 
     @property
     def full_scores(self) -> np.ndarray:
+        """
+        :return: full scores matrix
+        """
         return self.sparse_scores + self.dense_scores
 
     def save(self):
@@ -647,7 +684,6 @@ class RecallEvaluation:
         """
         Plot k-prime trend
         :param save: if to save
-        :param file_name: name of file
         """
 
         self._check_evaluated()
@@ -708,6 +744,9 @@ class RecallEvaluation:
         save_dataframe(df=self.results, path_=evaluation_file)
 
     def _check_evaluated(self):
+        """
+        Raise an exception if the model was not evaluated yet
+        """
         if not self._evaluated:
             raise Exception("Model not evaluated")
 

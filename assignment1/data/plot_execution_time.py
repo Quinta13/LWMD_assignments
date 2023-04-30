@@ -13,15 +13,14 @@ OUT = 'out_openmp.svg'
 DATA_NAMES = ['brightkite', 'facebook', 'full_graph', 'gemsec-facebook', 'github', 'gowalla']
 LIMIT = 10
 
-def main():
 
+def main():
     # Open the JSON file
     with open(FILE, 'r') as f:
         # Load the JSON data from the file
         data = json.load(f)
 
     for data_name, c in zip(DATA_NAMES, COLORS):
-
         times = data[data_name][TIME]
         sequential_time = times["1"]
 
@@ -29,11 +28,11 @@ def main():
         cores = [int(c) for c in list(times.keys())[:LIMIT]]
         speedup = [sequential_time / t for t in list(times.values())][:LIMIT]
 
-        plt.plot(cores, speedup, linestyle = 'solid', label=data_name, color=c)
- 
-    plt.plot(cores, cores,  linestyle = 'dashed', label="Linear speedup", color=COLORS[-1])
-    plt.fill_between(cores, cores, color='red', alpha=0.2 , label="Sublinear")
-    plt.fill_between([c for c in cores], [10 for c in cores], color='green', alpha=0.1 , label="Superlinear")
+        plt.plot(cores, speedup, linestyle='solid', label=data_name, color=c)
+
+    plt.plot(cores, cores, linestyle='dashed', label="Linear speedup", color=COLORS[-1])
+    plt.fill_between(cores, cores, color='red', alpha=0.2, label="Sublinear")
+    plt.fill_between([c for c in cores], [10 for c in cores], color='green', alpha=0.1, label="Superlinear")
 
     # Add a legend
     plt.legend()
@@ -44,7 +43,7 @@ def main():
     plt.ylabel('Speedup')
 
     plt.savefig(OUT)
-   
+
 
 if __name__ == "__main__":
     main()
