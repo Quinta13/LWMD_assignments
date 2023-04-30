@@ -26,7 +26,8 @@ def _log(info: str):
     Log message if enabled from settings
     :param info: information to log
     """
-    _log(info)
+    if LOG:
+        print(info)
 
 
 # INPUT DIRECTORY and FILES
