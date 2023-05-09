@@ -2,3 +2,7 @@
 /assignment2/datasets/
 /assignment1/.vscode/
 /.idea
+/assignment3/datasets/
+/assignment3/.idea
+/assignment3/__pycache__
+/assignment3/model/__pycache__
