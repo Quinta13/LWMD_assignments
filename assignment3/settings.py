@@ -19,7 +19,6 @@ VECTOR_INVERSE_MAPPING = 'vectorization_inverse_mapping'
 
 # EVALUATION
 EVALUATION_DIR = 'evaluation'
-
 EXACT_SOLUTION = 'exact_solution'
 
 # IMAGE DIRECTORY

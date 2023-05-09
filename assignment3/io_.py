@@ -152,6 +152,19 @@ def get_evaluation_dir(data_name: str) -> str:
     return path.join(get_dataset_dir(data_name=data_name), EVALUATION_DIR)
 
 
+def get_evaluation_file(data_name: str, file_name: str) -> str:
+    """
+    Return path to exact solution file
+    :param data_name: name of dataset in datasets folder
+    :param file_name: name for evaluation file
+    :return: path to exact solution file
+    """
+
+    evaluation_dir = get_evaluation_dir(data_name=data_name)
+
+    return path.join(evaluation_dir, f"{file_name}.json")
+
+
 def get_exact_solution_file(data_name: str) -> str:
     """
     Return path to exact solution file
@@ -159,9 +172,18 @@ def get_exact_solution_file(data_name: str) -> str:
     :return: path to exact solution file
     """
 
-    evaluation_dir = get_evaluation_dir(data_name=data_name)
+    return get_evaluation_file(data_name=data_name, file_name=EXACT_SOLUTION)
 
-    return path.join(evaluation_dir, f"{EXACT_SOLUTION}.json")
+
+def check_exact_evaluation(data_name: str) -> bool:
+    """
+    Check if a exact evaluation for a given dataset was computed
+    :param data_name: name of dataset in datasets folder
+    :return: true if exact solution was computed, false otherwise
+    """
+    exact_solution_file = get_exact_solution_file(data_name=data_name)
+    return path.exists(get_evaluation_dir(data_name=data_name)) and \
+           path.exists(exact_solution_file)
 
 
 # IMAGE DIRECTORY
@@ -228,7 +250,7 @@ def read_jsonl(path_: str) -> pd.DataFrame:
     :return: .jsonl file content as a dataframe
     """
     log(info=f"Loading {path_} ")
-    return pd.read_json(path_, lines=True).loc[:999]
+    return pd.read_json(path_, lines=True).loc[:9999]
 
 
 # CSR MATRIX
