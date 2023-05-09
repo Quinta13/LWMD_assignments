@@ -13,10 +13,10 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from io_ import get_dataset_main_dir, make_dir, download_and_unzip, log, check_dataset_downloaded, \
+from assignment3.io_ import get_dataset_main_dir, make_dir, download_and_unzip, log, check_dataset_downloaded, \
     get_vector_dir, get_vector_file, save_sparse_matrix, get_mapping_file, save_mapping, get_inverse_mapping_file, \
     save_inverse_mapping
-from model.documents import DocumentsCollection
+from assignment3.model.documents import DocumentsCollection
 
 
 class BEIRDatasetDownloader:

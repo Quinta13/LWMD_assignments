@@ -9,7 +9,7 @@ from typing import List
 from nltk import SnowballStemmer, WordNetLemmatizer, word_tokenize
 from nltk.corpus import stopwords
 
-from settings import EXTRA_PUNCTUATION
+from assignment3.settings import EXTRA_PUNCTUATION
 
 
 def tokenize(text: str, language: str) -> List[str]:

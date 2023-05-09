@@ -16,10 +16,10 @@ from pandas import DataFrame
 from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
 
-from io_ import check_dataset_downloaded, log, get_files, read_jsonl, check_dataset_vectorized, get_vector_file, \
+from assignment3.io_ import check_dataset_downloaded, log, get_files, read_jsonl, check_dataset_vectorized, get_vector_file, \
     load_sparse_matrix, get_mapping_file, load_mapping, get_inverse_mapping_file, load_inverse_mapping
-from settings import DEFAULT_LANGUAGE
-from utils import tokenize
+from assignment3.settings import DEFAULT_LANGUAGE
+from assignment3.utils import tokenize
 
 
 class Document:

@@ -15,7 +15,7 @@ from pandas import DataFrame
 from scipy import sparse
 from scipy.sparse import csr_matrix
 
-from settings import LOG, DATASETS_DIR_NAME, CORPUS, QUERIES, TEST, VECTOR_DIR, VECTOR_FILE, IMAGES_DIR, EXACT_SOLUTION, \
+from assignment3.settings import LOG, DATASETS_DIR_NAME, CORPUS, QUERIES, TEST, VECTOR_DIR, VECTOR_FILE, IMAGES_DIR, EXACT_SOLUTION, \
     EVALUATION_DIR, VECTOR_MAPPING, VECTOR_INVERSE_MAPPING
 
 

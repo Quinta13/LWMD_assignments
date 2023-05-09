@@ -7,9 +7,9 @@ from typing import List, Tuple, Dict
 from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity
 
-from io_ import log, get_vector_file, load_sparse_matrix, make_dir, get_evaluation_dir, get_exact_solution_file, \
+from assignment3.io_ import log, get_vector_file, load_sparse_matrix, make_dir, get_evaluation_dir, get_exact_solution_file, \
     save_evaluation
-from model.documents import DocumentVectors
+from assignment3.model.documents import DocumentVectors
 
 
 class ExactSolutionEvaluation:
