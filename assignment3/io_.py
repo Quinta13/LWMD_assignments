@@ -8,15 +8,15 @@ import os
 import urllib.request
 import zipfile
 from os import path as path
-from typing import Tuple, List, Dict
+from typing import Tuple, Dict, List
 
 import pandas as pd
-from pandas import DataFrame
 from scipy import sparse
 from scipy.sparse import csr_matrix
 
-from assignment3.settings import LOG, DATASETS_DIR_NAME, CORPUS, QUERIES, TEST, VECTOR_DIR, VECTOR_FILE, IMAGES_DIR, EXACT_SOLUTION, \
-    EVALUATION_DIR, VECTOR_MAPPING, VECTOR_INVERSE_MAPPING
+from assignment3.settings import LOG, DATASETS_DIR_NAME, CORPUS, QUERIES, TEST, VECTOR_DIR, IMAGES_DIR, \
+    EXACT_SOLUTION, \
+    EVALUATION_DIR, VECTOR_MAPPING, VECTOR_INVERSE_MAPPING, IO_LOG, VECTOR_FILE, IDF_PERMUTATION
 
 
 # LOGGER
@@ -27,6 +27,15 @@ def log(info: str):
     :param info: information to log
     """
     if LOG:
+        print(info)
+
+
+def _io_log(info: str):
+    """
+    Log message if enabled from settings
+    :param info: information to log
+    """
+    if IO_LOG:
         print(info)
 
 
@@ -80,8 +89,8 @@ def check_dataset_downloaded(data_name: str) -> bool:
     :return: true if dataset is already present, false otherwise
     """
     corpus, queries, test = get_files(data_name=data_name)
-    return path.exists(get_dataset_dir(data_name=data_name)) and \
-           path.exists(corpus) and path.exists(queries) and path.exists(test)
+    return path.exists(path=get_dataset_dir(data_name=data_name)) and \
+           path.exists(path=corpus) and path.exists(path=queries) and path.exists(path=test)
 
 
 # VECTORIZATION DIRECTORY and FILE
@@ -99,12 +108,25 @@ def get_vector_file(data_name: str) -> str:
     """
     Return path to vector file
     :param data_name: name of dataset in datasets folder
+    :param vector_name: name of vector file
     :return: path to vector file
     """
 
     vector_dir = get_vector_dir(data_name=data_name)
 
     return path.join(vector_dir, f"{VECTOR_FILE}.npz")
+
+
+def get_idf_permutation_file(data_name: str) -> str:
+    """
+    Return path to idf permutation file
+    :param data_name: name of dataset in datasets folder
+    :return: path to idf permutation file
+    """
+
+    vector_dir = get_vector_dir(data_name=data_name)
+
+    return path.join(vector_dir, f"{IDF_PERMUTATION}.json")
 
 
 def get_mapping_file(data_name: str) -> str:
@@ -137,8 +159,15 @@ def check_dataset_vectorized(data_name: str) -> bool:
     :return: true if dataset is vectorized, false otherwise
     """
     vector_file = get_vector_file(data_name=data_name)
-    return path.exists(get_vector_dir(data_name=data_name)) and \
-           path.exists(vector_file)
+    permutation_file = get_idf_permutation_file(data_name=data_name)
+    mapping = get_mapping_file(data_name=data_name)
+    inverse_mapping = get_inverse_mapping_file(data_name=data_name)
+
+    return path.exists(path=get_vector_dir(data_name=data_name)) and \
+           path.exists(path=vector_file) and \
+           path.exists(path=permutation_file) and \
+           path.exists(path=mapping) and \
+           path.exists(path=inverse_mapping)
 
 
 # EVALUATION
@@ -182,8 +211,8 @@ def check_exact_evaluation(data_name: str) -> bool:
     :return: true if exact solution was computed, false otherwise
     """
     exact_solution_file = get_exact_solution_file(data_name=data_name)
-    return path.exists(get_evaluation_dir(data_name=data_name)) and \
-           path.exists(exact_solution_file)
+    return path.exists(path=get_evaluation_dir(data_name=data_name)) and \
+           path.exists(path=exact_solution_file)
 
 
 # IMAGE DIRECTORY
@@ -228,6 +257,20 @@ def download_and_unzip(url: str, output_dir: str):
 
 # IO OPERATIONS for SPECIFIC FORMAT
 
+def _check_extension(path_: str, ext: str):
+    """
+    Check if given path as certain extension
+        raise an error in not correct
+    :param path_: file path to file
+    :param ext: file extension
+    """
+
+    actual_ext = os.path.splitext(path_)[1]
+
+    if actual_ext != f'.{ext}':
+        raise Exception(f"Given file: {path_}, but '.{ext}' extension was expected")
+
+
 def make_dir(path_: str) -> bool:
     """
     Create directory or ignore if it already exists
@@ -235,7 +278,7 @@ def make_dir(path_: str) -> bool:
     """
     try:
         os.makedirs(path_)
-        log(info=f"Creating directory {path_} ")
+        _io_log(info=f"Creating directory {path_} ")
         return True
     except OSError:
         return False  # it already exists
@@ -249,74 +292,108 @@ def read_jsonl(path_: str) -> pd.DataFrame:
     :param path_: path to .json file
     :return: .jsonl file content as a dataframe
     """
-    log(info=f"Loading {path_} ")
-    return pd.read_json(path_, lines=True).loc[:9999]
+
+    _check_extension(path_=path_, ext='jsonl')
+
+    _io_log(info=f"Loading {path_} ")
+    return pd.read_json(path_, lines=True)
 
 
 # CSR MATRIX
 
-def save_sparse_matrix(mat: csr_matrix, path_: str):
+def save_vectors(mat: csr_matrix, path_: str):
     """
     Save sparse matrix to disk
     :param mat: sparse matrix
     :param path_: local file path
     """
-    log(info=f"Saving {path_} ")
+
+    _check_extension(path_=path_, ext='npz')
+
+    _io_log(info=f"Saving {path_} ")
     sparse.save_npz(file=path_, matrix=mat)
 
 
-def load_sparse_matrix(path_: str) -> csr_matrix:
+def load_vectors(path_: str, idf_order: bool = False) -> csr_matrix:
     """
     Load sparse matrix from disk
     :param path_: local file path
+    :param idf_order: if sort columns by increasing idf
     :return: sparse matrix
     """
-    log(info=f"Loading {path_} ")
-    return sparse.load_npz(file=path_)
+
+    _check_extension(path_=path_, ext='npz')
+
+    _io_log(info=f"Loading {path_} ")
+    vectors = sparse.load_npz(file=path_)
+
+    if idf_order:
+        # sort columns by increasing idf
+        data_name = path.basename(path.dirname(path.dirname(path_)))
+        idf_permutation_file = get_idf_permutation_file(data_name=data_name)
+        idf_permutation = _load_idf_permutation(path_=idf_permutation_file)
+        vectors = vectors[:, idf_permutation]
+
+    return vectors
 
 
 # PANDAS DATAFRAME
 
+# TODO remove if not used
+"""
+
 def save_dataframe(df: DataFrame, path_: str):
-    """
+    \"""
     Save dataframe to disk
     :param df: dataframe
     :param path_: local file path
-    """
-    log(info=f"Saving {path_} ")
+    \"""
+    
+    _check_extension(path_=path_, ext='csv')
+    
+    _io_log(info=f"Saving {path_} ")
     df.to_csv(path_or_buf=path_)
 
 
 def load_dataframe(path_: str) -> DataFrame:
-    """
+    \"""
     Load dataframe from disk
     :param path_: local file path
     :return: dataframe
-    """
-    log(info=f"Loading {path_} ")
+    \"""
+    
+    _check_extension(path_=path_, ext='csv')
+
+    _io_log(info=f"Loading {path_} ")
     return pd.read_csv(filepath_or_buffer=path_)
+"""
 
 
 # JSON
 
-def _write_json(obj: Dict, path_: str):
+def _store_json(obj: Dict | List, path_: str):
     """
     Save object to a json file
     :param obj: object to be stored
     :param path_: local file path
     """
-    log(info=f"Saving {path_} ")
+
+    _check_extension(path_=path_, ext='json')
+
+    _io_log(info=f"Saving {path_} ")
     with open(path_, 'w') as f:
         json.dump(obj, f)
 
 
-def _load_json(path_: str) -> Dict:
+def _load_json(path_: str) -> Dict | List:
     """
     Load object from disk
     :param path_: local file path
     :return: object
     """
-    log(info=f"Loading {path_} ")
+    _io_log(info=f"Loading {path_} ")
+
+    _check_extension(path_=path_, ext='json')
 
     with open(path_, 'r') as f:
         obj = json.load(f)
@@ -329,7 +406,7 @@ def save_evaluation(eval_: Dict[Tuple[str, str]], path_: str):
     :param eval_: list of pairs
     :param path_: local file path
     """
-    _write_json(obj=eval_, path_=path_)
+    _store_json(obj=eval_, path_=path_)
 
 
 def load_evaluation(path_: str) -> Dict:
@@ -347,7 +424,7 @@ def save_mapping(dict_: Dict[int, Tuple[str, int]], path_: str):
     :param dict_: mapping between row index and doc_id, terms
     :param path_: local file path
     """
-    _write_json(obj=dict_, path_=path_)
+    _store_json(obj=dict_, path_=path_)
 
 
 def load_mapping(path_: str) -> Dict[int, Tuple[str, int]]:
@@ -362,11 +439,11 @@ def load_mapping(path_: str) -> Dict[int, Tuple[str, int]]:
 
 def save_inverse_mapping(dict_: Dict[str, int], path_: str):
     """
-    Store inverse vector mapping to disk
+     inverse vector mapping to disk
     :param dict_: mapping between doc_id and row
     :param path_: local file path
     """
-    _write_json(obj=dict_, path_=path_)
+    _store_json(obj=dict_, path_=path_)
 
 
 def load_inverse_mapping(path_: str) -> Dict[str, int]:
@@ -376,3 +453,23 @@ def load_inverse_mapping(path_: str) -> Dict[str, int]:
     :return: mapping between doc_id and row
     """
     return _load_json(path_=path_)
+
+
+def save_idf_permutation(list_: List[int], path_: str):
+    """
+    Store idf column permutation to disk
+    :param list_: idf permutation
+    :param path_: local file path
+    """
+    list_str = [str(i) for i in list_]
+    _store_json(obj=list_str, path_=path_)
+
+
+def _load_idf_permutation(path_: str) -> List[int]:
+    """
+    Load idf column permutation from disk
+    :param path_: local file path
+    :return: idf permutation
+    """
+    list_str =  _load_json(path_=path_)
+    return [int(i) for i in list_str]

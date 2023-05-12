@@ -62,4 +62,3 @@ def tokenize(text: str, language: str) -> List[str]:
             preprocessed_tokens.append(lemmatized_token)
 
     return preprocessed_tokens
-

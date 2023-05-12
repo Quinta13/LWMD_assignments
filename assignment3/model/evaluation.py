@@ -1,17 +1,18 @@
 from __future__ import annotations
 
+import itertools
+import math
 import time
 from abc import ABC, abstractmethod
 from itertools import combinations
 from typing import Dict
 
-import numpy as np
 from scipy.sparse import csr_matrix
-from scipy.spatial.distance import jaccard
 from sklearn.metrics.pairwise import cosine_similarity
 
-from assignment3.io_ import log, get_vector_file, load_sparse_matrix, make_dir, get_evaluation_dir, \
-    get_exact_solution_file, save_evaluation, load_evaluation, check_exact_evaluation, get_evaluation_file
+from assignment3.io_ import log, load_vectors, make_dir, get_evaluation_dir, \
+    get_exact_solution_file, save_evaluation, load_evaluation, check_exact_evaluation, get_evaluation_file, \
+    get_vector_file
 from assignment3.model.documents import DocumentVectors
 from assignment3.settings import EXACT_SOLUTION
 
@@ -20,6 +21,7 @@ class SimilarityPairsEvaluation(ABC):
     """ This class compute exact solution """
 
     TIME_KEY = 'execution_time'
+    # PREPROCESSING_KEY = 'preprocessing_time'
     THRESHOLD_KEY = 'threshold'
     PAIRS_KEY = 'pairs'
 
@@ -46,17 +48,23 @@ class SimilarityPairsEvaluation(ABC):
         self._results: Dict = dict()  # available after evaluation
         self._evaluated: bool = False
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         :return: string representation for the object
         """
-        return f"{self._CLASS_NAME} - {self._data_name} ({self._threshold} similarity) "
+        return f"{self._CLASS_NAME} - {self._data_name} ({len(self)} docs, {self._threshold} similarity) "
 
     def __repr__(self):
         """
         :return: string representation for the object
         """
         return str(self)
+
+    def __len__(self):
+        """
+        :return: len of documents to evaluate
+        """
+        return len(self._document_vectors)
 
     # PROPERTIES
 
@@ -76,6 +84,14 @@ class SimilarityPairsEvaluation(ABC):
         self._check_evaluated()
         return self._results[self.TIME_KEY]
 
+    """@property
+    def preprocessing_time(self):
+        \"""
+        :return: evaluation preprocessing time
+        \"""
+        self._check_evaluated()
+        return self._results[self.PREPROCESSING_KEY]"""
+
     @property
     def score(self) -> float:
         """ Compare pairs with exact solution"""
@@ -94,7 +110,10 @@ class SimilarityPairsEvaluation(ABC):
         intersection = len(actual_pairs.intersection(exact_pairs))
         union = len(actual_pairs.union(exact_pairs))
 
-        return intersection / union
+        try:
+            return intersection / union
+        except ZeroDivisionError:
+            return 0  # in case 0 pair found
 
     # EVALUATION
 
@@ -114,7 +133,7 @@ class SimilarityPairsEvaluation(ABC):
 
         log(info="Loading vectors. ")
         file = get_vector_file(data_name=self._data_name)
-        return load_sparse_matrix(path_=file)
+        return load_vectors(path_=file)
 
     def _check_evaluated(self):
         """
@@ -173,25 +192,56 @@ class ExactSolutionEvaluation(SimilarityPairsEvaluation):
 
         vectors: csr_matrix = self._document_vectors.vectors
 
+        pairs = []
         n_docs, _ = vectors.shape
+
+        # WAY 1
+
+        # """
+        log(info="Computing cosine similarity. ")
 
         cos_sim_matrix = cosine_similarity(vectors)
         are_similar = cos_sim_matrix > self._threshold
 
-        pairs = []
+        log(info="Inspecting similarities. ")
 
         for i, j in combinations(range(n_docs), 2):
             if are_similar[i, j]:
                 id_1, _ = self._document_vectors.get_row_info(row=i)
                 id_2, _ = self._document_vectors.get_row_info(row=j)
                 pairs.append((id_1, id_2))
+        # """
+
+        # WAY 2
+
+        """
+
+        n_combs = math.comb(n_docs, 2)
+
+        combs = itertools.combinations(range(n_docs), 2)
+
+        for iter_, comb in enumerate(combs):
+            print(f"{iter_ * 100 / n_combs:3f}%")
+
+            i, j = comb
+
+            row_1 = vectors[i].toarray()
+            row_2 = vectors[j].toarray()
+
+            if cosine_similarity(X=row_1, Y=row_2) > self._threshold:
+                id_1, _ = self._document_vectors.get_row_info(row=i)
+                id_2, _ = self._document_vectors.get_row_info(row=j)
+                pairs.append((id_1, id_2))
+                
+        """
 
         t2 = time.perf_counter()
 
         self._results = {
             self.PAIRS_KEY: pairs,
             self.THRESHOLD_KEY: self._threshold,
-            self.TIME_KEY: t2 - t1
+            self.TIME_KEY: t2 - t1,
+            # self.PREPROCESSING_KEY: 0
         }
 
         self._evaluated = True
@@ -206,31 +256,123 @@ class ExactSolutionEvaluation(SimilarityPairsEvaluation):
         self._save(file_name=EXACT_SOLUTION)
 
 
-class HeuristicSolution(SimilarityPairsEvaluation):
+class DimensionalityHeuristicEvaluation(SimilarityPairsEvaluation):
     """ This class compute pairs using different heuristics:
         - dimensionality reduction
     """
 
-    _CLASS_NAME = "HeuristicSolution"
+    _CLASS_NAME = "DimensionalityHeuristicEvaluation"
 
     # DUNDER
 
-    def __init__(self, data_name: str, threshold: float, new_dim: int | None = None):
+    def __init__(self, data_name: str, threshold: float, eps: float):
         """
         :param data_name: dataset name in datasets folder
-        :param new_dim: new dimensionality for vectors, if not given original one is preserved
+        :param eps: new dimensionality for vectors
         """
 
         super().__init__(data_name, threshold)
 
-        # heuristics param, if None heuristic is not used
-        self._new_dim: int | None = new_dim
+        # heuristics params, if None heuristic is not used
+
+        # dim_reduction
+        if not 0 < eps < 1:
+            raise Exception(f"Invalid approximation error {eps}: not in range ]0, 1[ ")
+        self._eps: float | None = eps
 
     def __str__(self):
         """
         :return: string representation for the object
         """
-        f"{super(HeuristicSolution, self).__str__()} [Heuristics: 'dim_reduction':  {self._new_dim}]"
+        return f"{super().__str__()} ['dim_reduction':  {self._eps} approx error] "
+
+    # EVALUATION
+
+    def evaluate(self):
+        """
+        Evaluate the model
+        """
+
+        # -- DIMENSIONALITY REDUCTION HEURISTIC --
+
+        log(info="Performing dimensionality reduction. ")
+
+        pt1 = time.perf_counter()
+
+        self._document_vectors.perform_dimensionality_reduction(eps=self._eps)
+        vectors = self._document_vectors.vectors_reduced
+
+        pt2 = time.perf_counter()
+
+        # ----------------------------------------
+
+        t1 = time.perf_counter()
+
+        n_docs, _ = vectors.shape
+
+        log(info="Computing similarities. ")
+
+        cos_sim_matrix = cosine_similarity(vectors)
+        are_similar = cos_sim_matrix > self._threshold
+
+        log(info="Inspecting similarities. ")
+
+        pairs = []
+
+        for i, j in combinations(range(n_docs), 2):
+            if are_similar[i, j]:
+                id_1, _ = self._document_vectors.get_row_info(row=i)
+                id_2, _ = self._document_vectors.get_row_info(row=j)
+                pairs.append((id_1, id_2))
+
+        t2 = time.perf_counter()
+
+        self._results = {
+            self.PAIRS_KEY: pairs,
+            self.THRESHOLD_KEY: self._threshold,
+            self.TIME_KEY: t2 - t1,
+            # self.PREPROCESSING_KEY: pt2 - pt1
+        }
+
+        self._evaluated = True
+
+    # SAVE
+
+    def save(self, file_name: str = 'dim_reduction_heuristic'):
+        """
+        Save evaluation
+        :param file_name: is ignored
+        """
+        self._save(file_name=file_name)
+
+
+class DocSizeHeuristicEvaluation(SimilarityPairsEvaluation):
+    """ This class compute pairs using different heuristics:
+        - dimensionality reduction
+    """
+
+    _CLASS_NAME = "DocSizeHeuristicEvaluation"
+
+    # DUNDER
+
+    def __init__(self, data_name: str, threshold: float,
+                 k: float | None = None):
+        """
+        :param data_name: dataset name in datasets folder
+        :param k: doc-size multiplication factor
+        """
+
+        super().__init__(data_name, threshold)
+
+        if k < 1:
+            raise Exception(f"Invalid mult factor {k}: not greater than 1 ")
+        self._k: float | None = k
+
+    def __str__(self):
+        """
+        :return: string representation for the object
+        """
+        return f"{super().__str__()} ['docs_size': {self._k} mult factor]"
 
     # EVALUATION
 
@@ -241,46 +383,55 @@ class HeuristicSolution(SimilarityPairsEvaluation):
 
         log(info="Evaluating. ")
 
+        vectors: csr_matrix = self._document_vectors.vectors
+
         t1 = time.perf_counter()
 
-        # DIMENSIONALITY REDUCTION HEURISTIC
-
-        vectors: csr_matrix | np.ndarray
-
-        if self._new_dim is None:
-            vectors = self._document_vectors.vectors
-        else:
-            self._document_vectors.perform_dimensionality_reduction(new_dim=self._new_dim)
-            vectors = self._document_vectors.vectors_reduced
-
         n_docs, _ = vectors.shape
+
+        log(info="Computing similarities. ")
 
         cos_sim_matrix = cosine_similarity(vectors)
         are_similar = cos_sim_matrix > self._threshold
 
         pairs = []
 
-        for i, j in combinations(range(n_docs), 2):
-            if are_similar[i, j]:
-                id_1, _ = self._document_vectors.get_row_info(row=i)
-                id_2, _ = self._document_vectors.get_row_info(row=j)
-                pairs.append((id_1, id_2))
+        use_docsize = self._k is not None
+
+        log(info="Inspecting similarities. ")
+
+        for i in range(n_docs-1):
+
+            id_1, len_1 = self._document_vectors.get_row_info(row=i)
+
+            for j in range(i+1, n_docs):
+
+                id_2, len_2 = self._document_vectors.get_row_info(row=j)
+
+                # -- DOC-SIZE HEURISTIC --
+                if use_docsize and len_1 / len_2 > self._k:
+                    break
+                # ------------------------
+
+                if are_similar[i, j]:
+                    pairs.append((id_1, id_2))
 
         t2 = time.perf_counter()
 
         self._results = {
             self.PAIRS_KEY: pairs,
             self.THRESHOLD_KEY: self._threshold,
-            self.TIME_KEY: t2 - t1
+            self.TIME_KEY: t2 - t1,
+            # self.PREPROCESSING_KEY: 0
         }
 
         self._evaluated = True
 
     # SAVE
 
-    def save(self, file_name: str = 'evaluation'):
+    def save(self, file_name: str = 'doc_size_heuristic'):
         """
         Save evaluation
         :param file_name: is ignored
         """
-        self._save(file_name=EXACT_SOLUTION)
+        self._save(file_name=file_name)

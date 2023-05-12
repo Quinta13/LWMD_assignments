@@ -13,9 +13,11 @@ TEST = path.join('qrels', 'test.tsv')
 
 # VECTORIZATION FILES and DIRECTORIES
 VECTOR_DIR = 'vector'
-VECTOR_FILE = 'vectorized'
-VECTOR_MAPPING = 'vectorization_mapping'
-VECTOR_INVERSE_MAPPING = 'vectorization_inverse_mapping'
+VECTOR_FILE = 'vector'
+
+IDF_PERMUTATION = 'info_idf_permutation'
+VECTOR_MAPPING = 'info_mapping'
+VECTOR_INVERSE_MAPPING = 'info_inverse_mapping'
 
 # EVALUATION
 EVALUATION_DIR = 'evaluation'
@@ -29,4 +31,5 @@ EXTRA_PUNCTUATION = '•'
 DEFAULT_LANGUAGE = 'english'
 
 # LOGGER
-LOG = True  # if to print OS operation
+IO_LOG = False  # if to print OD operation
+LOG = True  # if to print operation

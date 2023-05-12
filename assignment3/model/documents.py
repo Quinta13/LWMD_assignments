@@ -12,12 +12,11 @@ from typing import List, Iterator, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-from pandas import DataFrame
 from scipy.sparse import csr_matrix
-from sklearn.decomposition import PCA
+from sklearn.random_projection import johnson_lindenstrauss_min_dim, SparseRandomProjection
 
-from assignment3.io_ import check_dataset_downloaded, log, get_files, read_jsonl, check_dataset_vectorized, get_vector_file, \
-    load_sparse_matrix, get_mapping_file, load_mapping, get_inverse_mapping_file, load_inverse_mapping
+from assignment3.io_ import check_dataset_downloaded, log, get_files, read_jsonl, check_dataset_vectorized, \
+    load_vectors, get_mapping_file, load_mapping, get_inverse_mapping_file, load_inverse_mapping, get_vector_file
 from assignment3.settings import DEFAULT_LANGUAGE
 from assignment3.utils import tokenize
 
@@ -118,6 +117,15 @@ class Document:
         # tokenization check is delegated to tf property
         return len(self.tf.keys())
 
+    @property
+    def is_empty(self) -> bool:
+        """
+        Returns if document content is empty
+        """
+        return len(self.tokens) == 0
+
+    # TOKENIZATION
+
     def tokenize(self):
         """
         Tokenize the document
@@ -144,7 +152,7 @@ class DocumentsCollection:
 
     # DUNDER
 
-    def __init__(self, data_name: str):
+    def __init__(self, data_name: str, language: str = DEFAULT_LANGUAGE):
         """
 
         :param data_name: dataset name in datasets folder
@@ -155,6 +163,7 @@ class DocumentsCollection:
                             f"Use BEIRDatasetDownloader to download it.")
 
         self._data_name = data_name
+        self._language = language
 
         self._documents: Dict[str, Document] = self._parse()
 
@@ -231,7 +240,7 @@ class DocumentsCollection:
 
         documents: Dict[str, Document] = {
             row[self._ID_FIELD]:
-                Document(id_=row[self._ID_FIELD], content=row[self._CONTENT_FIELD])
+                Document(id_=row[self._ID_FIELD], content=row[self._CONTENT_FIELD], language=self._language)
             for _, row in docs_df.iterrows()
         }
 
@@ -261,6 +270,12 @@ class DocumentVectors:
         self._vectors: csr_matrix = self._load_vectors()
         self._mapping: Dict[int, Tuple[str, int]] = self._load_mapping()
         self._inverse_mapping: Dict[str, int] = self._load_inverse_mapping()
+
+    def __len__(self):
+        """
+        :return: number of documents in the collection
+        """
+        return self._vectors.shape[0]
 
     @property
     def vectors(self) -> csr_matrix:
@@ -297,17 +312,21 @@ class DocumentVectors:
 
     # DIMENSIONALITY REDUCTION
 
-    def perform_dimensionality_reduction(self, new_dim: int):
+    def perform_dimensionality_reduction(self, eps: float):
         """
-        Reduce dataframe dimensionality to target one
+        Reduce dataframe dimensionality with given approximation error
+        :param eps: approximation error
         """
 
-        pca = PCA(n_components=new_dim)
+        # Compute the minimum number of components required to reduce the dimensionality
+        n_components = johnson_lindenstrauss_min_dim(n_samples=self.vectors.shape[0], eps=eps)
 
-        vect_df = DataFrame.sparse.from_spmatrix(self.vectors)
-        reduced_vect = pca.fit_transform(vect_df.values)
+        # Create a Sparse Random Projection object with the computed number of components
+        transformer = SparseRandomProjection(n_components=n_components)
 
-        self._vectors_reduced = reduced_vect
+        # Fit and transform the original array
+        self._vectors_reduced = transformer.fit_transform(self.vectors).toarray()
+
         self._reduced = True
 
     # LOADING
@@ -321,7 +340,7 @@ class DocumentVectors:
         log(info="Loading vectors. ")
 
         file = get_vector_file(data_name=self._data_name)
-        mat: csr_matrix = load_sparse_matrix(path_=file)
+        mat: csr_matrix = load_vectors(path_=file)
 
         return mat
 
