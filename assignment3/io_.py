@@ -8,7 +8,7 @@ import os
 import urllib.request
 import zipfile
 from os import path as path
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Any
 
 import pandas as pd
 from scipy import sparse
@@ -16,7 +16,8 @@ from scipy.sparse import csr_matrix
 
 from assignment3.settings import LOG, DATASETS_DIR_NAME, CORPUS, QUERIES, TEST, VECTOR_DIR, IMAGES_DIR, \
     EXACT_SOLUTION, \
-    EVALUATION_DIR, VECTOR_MAPPING, VECTOR_INVERSE_MAPPING, IO_LOG, VECTOR_FILE, IDF_PERMUTATION
+    EVALUATION_DIR, VECTOR_MAPPING, VECTOR_INVERSE_MAPPING, IO_LOG, VECTOR_FILE, IDF_PERMUTATION, SKETCHING_DIR, \
+    SKETCHING_FILE
 
 
 # LOGGER
@@ -215,6 +216,40 @@ def check_exact_evaluation(data_name: str) -> bool:
            path.exists(path=exact_solution_file)
 
 
+# SKETCHING
+
+def get_sketching_dir(data_name: str) -> str:
+    """
+    Return path to folder containing sketching files
+    :param data_name: name of dataset in datasets folder
+    :return: path to sketching folder
+    """
+    return path.join(get_dataset_dir(data_name=data_name), SKETCHING_DIR)
+
+
+def get_signatures_file(data_name: str) -> str:
+    """
+    Return path to signatures file
+    :param data_name: name of dataset in datasets folder
+    :return: path to exact signatures file
+    """
+
+    evaluation_dir = get_sketching_dir(data_name=data_name)
+
+    return path.join(evaluation_dir, f"{SKETCHING_FILE}.json")
+
+
+def check_sketching(data_name: str) -> bool:
+    """
+    Check if a sketching for a given dataset was computed
+    :param data_name: name of dataset in datasets folder
+    :return: true if sketching was computed, false otherwise
+    """
+    sketch_file = get_signatures_file(data_name=data_name)
+    return path.exists(path=get_sketching_dir(data_name=data_name)) and \
+           path.exists(path=sketch_file)
+
+
 # IMAGE DIRECTORY
 
 def get_images_dir(data_name: str) -> str:
@@ -400,7 +435,7 @@ def _load_json(path_: str) -> Dict | List:
         return obj
 
 
-def save_evaluation(eval_: Dict[Tuple[str, str]], path_: str):
+def save_evaluation(eval_: Dict[str, Any], path_: str):
     """
     Store list of pairs of integers to disk
     :param eval_: list of pairs
@@ -409,7 +444,7 @@ def save_evaluation(eval_: Dict[Tuple[str, str]], path_: str):
     _store_json(obj=eval_, path_=path_)
 
 
-def load_evaluation(path_: str) -> Dict:
+def load_evaluation(path_: str) -> Dict[str, Any]:
     """
     Load list of pairs of integers from disk
     :param path_: local file path
@@ -473,3 +508,23 @@ def _load_idf_permutation(path_: str) -> List[int]:
     """
     list_str =  _load_json(path_=path_)
     return [int(i) for i in list_str]
+
+
+def save_signatures(dict_: Dict[str, List[int]], path_: str):
+    """
+    Save sketching signatures to disk
+    :param dict_: signatures
+    :param path_: local file path
+    """
+    dict_str = {k: [str(i) for i in v] for k, v in dict_.items()}
+    _store_json(obj=dict_str, path_=path_)
+
+
+def load_signatures(path_: str) -> Dict[str, List[int]]:
+    """
+    Load sketching signatures from disk
+    :param path_: local file path
+    :return: signatures
+    """
+    dict_ = _load_json(path_=path_)
+    return {k: [int(i) for i in v] for k, v in dict_.items()}

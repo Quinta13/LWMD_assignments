@@ -10,13 +10,14 @@ from typing import List, Dict, Tuple
 from urllib.error import HTTPError
 
 import numpy as np
+from datasketch import MinHash
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from assignment3.io_ import get_dataset_main_dir, make_dir, download_and_unzip, log, check_dataset_downloaded, \
     get_vector_dir, save_vectors, get_mapping_file, \
     save_mapping, get_inverse_mapping_file, save_inverse_mapping, get_vector_file, get_idf_permutation_file, \
-    save_idf_permutation
+    save_idf_permutation, get_sketching_dir, get_signatures_file, save_signatures
 from assignment3.model.documents import DocumentsCollection
 from assignment3.settings import DEFAULT_LANGUAGE
 
@@ -109,6 +110,18 @@ class DocumentsVectorizer:
         self._mapping: Dict[int, Tuple[str, int]] = dict()   # available after vectorization
         self._inverse_mapping: Dict[str, int] = dict()       # available after vectorization
         self._vectorized: bool = False
+
+    def __str__(self):
+        """
+        :return: string representation for the object
+        """
+        return f"{self._data_name} Vectorizer [{len(self._documents)} documents]"
+
+    def __repr__(self):
+        """
+        :return: string representation for the object
+        """
+        return str(self)
 
     # PROPERTIES
 
@@ -258,4 +271,116 @@ class DocumentsVectorizer:
         save_inverse_mapping(dict_=self.inverse_mapping, path_=out_inverse_map)
 
 
+class DocumentsSketching:
+    """
+    This class compute MinHash sketching between each sketch
+    """
 
+    # DUNDER
+
+    def __init__(self, data_name: str, n_hash: int, language: str = DEFAULT_LANGUAGE):
+        """
+        :param data_name: name of dataset in datasets folder
+        :param n_hash: number of hash functions
+        :param language: document language
+        """
+
+        self._data_name: str = data_name
+        self._n_hash: int = n_hash
+        self._language: str = language
+
+        self._documents: DocumentsCollection = \
+            DocumentsCollection(data_name=self._data_name, language=self._language)  # check if dataset exists
+        self._tokenize()
+
+        self._signatures: Dict[str, List[int]] = dict()  # available after sketching
+        self._sketched: bool = False
+
+    def __str__(self):
+        """
+        :return: string representation for the object
+        """
+        return f"{self._data_name} Sketching [{len(self._documents)} docs, {self._n_hash} hash functions]"
+
+    def __repr__(self):
+        """
+        :return: string representation for the object
+        """
+        return str(self)
+
+    # PROPERTY
+
+    @property
+    def signatures(self) -> Dict[str, List[int]]:
+        """
+        :return: sketching
+        """
+        self._check_sketched()
+        return self._signatures
+
+    # TOKENIZATION
+
+    def _tokenize(self):
+        """
+        Tokenizing documents
+        """
+
+        log(info="Tokenizing documents. ")
+
+        [doc.tokenize() for doc in self._documents]  # side effect
+
+    # SKETCHING
+
+    def _minhash_signature(self, tokens: List[str]) -> List[int]:
+        """
+        Compute MinHash signature for one document
+        :param tokens: document tokens
+        """
+
+        m = MinHash(self._n_hash)
+
+        for token in tokens:
+            m.update(token.encode('utf8'))
+
+        return list(m.hashvalues)
+
+    def sketch(self):
+        """
+        Compute signature for each document
+        """
+
+        log(info="Performing sketching")
+
+        self._signatures = {
+            doc.id_: self._minhash_signature(tokens=doc.tokens)
+            for doc in self._documents
+            if not doc.is_empty
+        }
+
+        self._sketched = True
+
+    def _check_sketched(self):
+        """
+        Check if sketching was performed
+            raise an error otherwise
+        """
+        if not self._sketched:
+            raise Exception("Sketching not performed yet")
+
+    # SAVE
+
+    def save(self):
+
+        """
+        Save sparse and dense representation to proper directory
+            it may overwrite previous possible vectorizations
+        """
+
+        # exception delegated to the property
+        signatures = self.signatures
+
+        make_dir(get_sketching_dir(self._data_name))
+
+        log(info="Saving signatures")
+        sign_file = get_signatures_file(data_name=self._data_name)
+        save_signatures(dict_=signatures, path_=sign_file)

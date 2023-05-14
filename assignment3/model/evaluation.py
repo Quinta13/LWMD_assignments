@@ -5,16 +5,19 @@ import math
 import time
 from abc import ABC, abstractmethod
 from itertools import combinations
-from typing import Dict
+from typing import Dict, List, Set
 
+import numpy as np
 from scipy.sparse import csr_matrix
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
+from sklearn.preprocessing import OneHotEncoder
 
 from assignment3.io_ import log, load_vectors, make_dir, get_evaluation_dir, \
     get_exact_solution_file, save_evaluation, load_evaluation, check_exact_evaluation, get_evaluation_file, \
-    get_vector_file
+    get_vector_file, get_signatures_file, load_signatures
 from assignment3.model.documents import DocumentVectors
 from assignment3.settings import EXACT_SOLUTION
+from assignment3.utils import jaccard
 
 
 class SimilarityPairsEvaluation(ABC):
@@ -104,16 +107,10 @@ class SimilarityPairsEvaluation(ABC):
         exact_pairs = load_evaluation(path_=file)[self.PAIRS_KEY]
         exact_pairs = [(a, b) for a, b in exact_pairs]  # convert from lists of two in tuples
 
-        actual_pairs = set(self.pairs)
+        actual_pairs = self.pairs
 
         # computing jaccard similarity
-        intersection = len(actual_pairs.intersection(exact_pairs))
-        union = len(actual_pairs.union(exact_pairs))
-
-        try:
-            return intersection / union
-        except ZeroDivisionError:
-            return 0  # in case 0 pair found
+        return jaccard(s1=set(exact_pairs), s2=set(actual_pairs))
 
     # EVALUATION
 
@@ -433,5 +430,111 @@ class DocSizeHeuristicEvaluation(SimilarityPairsEvaluation):
         """
         Save evaluation
         :param file_name: is ignored
+        """
+        self._save(file_name=file_name)
+
+
+class MinHashingHeuristicEvaluation(SimilarityPairsEvaluation):
+    """ This class compute pairs using min-hash sketching heuristic
+    """
+
+    _CLASS_NAME = "MinHashingHeuristicEvaluation"
+
+    # DUNDER
+
+    def __init__(self, data_name: str, threshold: float):
+        """
+        :param data_name: dataset name in datasets folder
+        """
+
+        super().__init__(data_name, threshold)
+
+        # heuristics params, if None heuristic is not used
+
+        self._signatures: Dict[str, List[int]] = self._load_signatures()
+
+    def __str__(self):
+        """
+        :return: string representation for the object
+        """
+        n_hash = len(self._signatures[list(self._signatures.keys())[0]])
+        return f"{super().__str__()} ['n_hash':  {n_hash} hash functions] "
+
+    def _load_signatures(self) -> Dict[str, List[int]]:
+        """
+        Load signatures file
+        """
+
+        log(info="Loading signatures")
+
+        sign_file = get_signatures_file(data_name=self._data_name)
+        return load_signatures(path_=sign_file)
+
+    # EVALUATION
+
+    def evaluate(self):
+        """
+        Evaluate the model
+        """
+
+        log(info="Mapping signatures ")
+
+        t1 = time.perf_counter()
+
+        keys = [k for k in self._signatures.keys()]
+        values = [v for v in self._signatures.values()]
+
+        log(info="Creating boolean matrix ")
+
+        encoder = OneHotEncoder(sparse=False, dtype=bool)
+        one_hot = encoder.fit_transform(values)
+
+        n_docs, _ = one_hot.shape
+
+        pairs = []
+
+        # WAY 1
+
+        log(info="Computing similarities ")
+
+        similarity_matrix = 1 - pairwise_distances(one_hot, metric='jaccard')
+        are_similar = similarity_matrix > self._threshold
+
+        log(info="Inspecting similarities ")
+        for i, j in combinations(range(n_docs), 2):
+            if are_similar[i, j]:
+                pairs.append((keys[i], keys[j]))
+
+        # WAY 2
+
+        """
+        
+        log(info="Inspecting similarities. ")
+
+        for i in range(row-1):
+        ind1 = set(one_hot[i].indices)
+        for j in range(i+1, row):
+            ind2 = set(one_hot[j].indices)
+            if jaccard(ind1, ind2) > self._threshold:
+                pairs.append(keys[i], keys[j])
+        """
+
+        t2 = time.perf_counter()
+
+        self._results = {
+            self.PAIRS_KEY: pairs,
+            self.THRESHOLD_KEY: self._threshold,
+            self.TIME_KEY: t2 - t1,
+            # self.PREPROCESSING_KEY: 0
+        }
+
+        self._evaluated = True
+
+    # SAVE
+
+    def save(self, file_name: str = 'min_hashing_heuristic'):
+        """
+        Save evaluation
+        :param file_name: result file name
         """
         self._save(file_name=file_name)

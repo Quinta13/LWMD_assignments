@@ -19,9 +19,14 @@ IDF_PERMUTATION = 'info_idf_permutation'
 VECTOR_MAPPING = 'info_mapping'
 VECTOR_INVERSE_MAPPING = 'info_inverse_mapping'
 
+# SKETCHING FILES and DIRECTORIES
+SKETCHING_DIR = 'sketching'
+SKETCHING_FILE = 'signatures'
+
 # EVALUATION
 EVALUATION_DIR = 'evaluation'
 EXACT_SOLUTION = 'exact_solution'
+
 
 # IMAGE DIRECTORY
 IMAGES_DIR = "images"

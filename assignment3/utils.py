@@ -4,7 +4,7 @@ they have a general purpose and are not strictly related to a specific behaviour
 """
 
 import string
-from typing import List
+from typing import List, Collection, Set
 
 from nltk import SnowballStemmer, WordNetLemmatizer, word_tokenize
 from nltk.corpus import stopwords
@@ -62,3 +62,20 @@ def tokenize(text: str, language: str) -> List[str]:
             preprocessed_tokens.append(lemmatized_token)
 
     return preprocessed_tokens
+
+
+def jaccard(s1: Set, s2: Set) -> float:
+    """
+    Return jaccard similarity between two sets in input
+    :param s1: first collection
+    :param s2: second collection
+    :return: jaccard similarity between the two
+    """
+
+    if len(s1) == 0 and len(s2) == 0:
+        raise Exception("Impossible to compute jaccard similarity between two empty sets")
+
+    intersection = len(s1.intersection(s2))
+    union = len(s1.union(s2))
+
+    return intersection / union
