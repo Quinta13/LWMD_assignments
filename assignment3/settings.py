@@ -10,7 +10,6 @@ CORPUS = 'corpus.jsonl'
 QUERIES = 'queries.jsonl'
 TEST = path.join('qrels', 'test.tsv')
 
-
 # VECTORIZATION FILES and DIRECTORIES
 VECTOR_DIR = 'vector'
 VECTOR_FILE = 'vector'
@@ -27,7 +26,6 @@ SKETCHING_FILE = 'signatures'
 EVALUATION_DIR = 'evaluation'
 EXACT_SOLUTION = 'exact_solution'
 
-
 # IMAGE DIRECTORY
 IMAGES_DIR = "images"
 
@@ -37,4 +35,4 @@ DEFAULT_LANGUAGE = 'english'
 
 # LOGGER
 IO_LOG = False  # if to print OD operation
-LOG = True  # if to print operation
+LOG = True      # if to print operation
