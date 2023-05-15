@@ -219,7 +219,6 @@ class DocumentsCollection:
         """
 
         for id_ in ids:
-
             log(info=f"Document {id_}: ")
             log(info=self.get_document(id_=id_).content)
             log(info="")
@@ -248,7 +247,6 @@ class DocumentsCollection:
 
 
 class DocumentVectors:
-
     """ This class provide a vector view of the documents """
 
     def __init__(self, data_name: str):
@@ -276,6 +274,18 @@ class DocumentVectors:
         :return: number of documents in the collection
         """
         return self._vectors.shape[0]
+
+    def __str__(self):
+        """
+        :return: string representation for the object
+        """
+        return f"{self._data_name} Vector Documents [{len(self)}]"
+
+    def __repr__(self):
+        """
+        :return: string representation for the object
+        """
+        return str(self)
 
     @property
     def vectors(self) -> csr_matrix:
@@ -374,3 +384,36 @@ class DocumentVectors:
         """
         if not self._reduced:
             raise Exception("Dimensionality reduction was not performed yet")
+
+    # MAP INPUT
+    @property
+    def documents_info(self) -> List[Tuple[str, List[int, float]]]:
+        """
+        Transpose vectors information in order to be processed by Mapper
+        :return: list of tuples (doc-id ; list(term-id; value))
+        """
+
+        def extract_nonzero_entries(row: int) -> List[int, float]:
+            """
+            Return row mapping non-zero entries (term-id; entry value)
+            :param row: row corresponding to certain document
+            :return: list of tuples (term-id; entry value)
+            """
+
+            doc: csr_matrix = self.vectors[row]
+
+            _, terms = doc.nonzero()
+            terms = [int(t) for t in terms]
+            terms.sort()
+
+            entries = doc[0, terms].toarray().tolist()[0]
+
+            return list(zip(terms, entries))
+
+        return [
+            (
+                self.get_row_info(row=index)[0],  # doc-id
+                extract_nonzero_entries(row=index)  # list(term-id, value)
+            )
+            for index in list(range(len(self)))
+        ]

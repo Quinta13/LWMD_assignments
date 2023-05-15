@@ -4,7 +4,7 @@ they have a general purpose and are not strictly related to a specific behaviour
 """
 
 import string
-from typing import List, Collection, Set
+from typing import List, Collection, Set, Dict, Any
 
 from nltk import SnowballStemmer, WordNetLemmatizer, word_tokenize
 from nltk.corpus import stopwords
@@ -79,3 +79,30 @@ def jaccard(s1: Set, s2: Set) -> float:
     union = len(s1.union(s2))
 
     return intersection / union
+
+
+def chunks_split(collection: List[Any], n_split: int) -> Dict[int, List[Any]]:
+    """
+    Split given collection in distributed length chunks
+    :param collection: collection to split
+    :param n_split: number of split
+    :return: split collection
+    """
+
+    chunk_size = len(collection) // n_split  # default split length
+    remainder = len(collection) % n_split    # extra elements out of perfect split
+
+    chunks = dict()
+    index = 0
+
+    for i in range(n_split):
+        chunk = collection[index: index + chunk_size]
+        if remainder > 0:  # extra element to distribute
+            chunk.append(collection[index + chunk_size])
+            remainder -= 1
+            index += chunk_size + 1
+        else:  # no extra element
+            index += chunk_size
+        chunks[i] = chunk
+
+    return chunks
