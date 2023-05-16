@@ -13,13 +13,15 @@ import numpy as np
 from datasketch import MinHash
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 from assignment3.io_ import get_dataset_main_dir, make_dir, download_and_unzip, log, check_dataset_downloaded, \
     get_vector_dir, save_vectors, get_mapping_file, \
     save_mapping, get_inverse_mapping_file, save_inverse_mapping, get_vector_file, get_idf_permutation_file, \
-    save_idf_permutation, get_sketching_dir, get_signatures_file, save_signatures
+    save_idf_permutation, get_sketching_dir, get_signatures_file, save_signatures, get_terms_info_file, save_terms_info, \
+    get_terms_info_idf_file
 from assignment3.model.documents import DocumentsCollection
-from assignment3.settings import DEFAULT_LANGUAGE
+from assignment3.settings import DEFAULT_LANGUAGE, SIMILARITY
 
 
 class BEIRDatasetDownloader:
@@ -109,6 +111,8 @@ class DocumentsVectorizer:
         self._idf_permutation: np.ndarray = np.array([])     # available after vectorization
         self._mapping: Dict[int, Tuple[str, int]] = dict()   # available after vectorization
         self._inverse_mapping: Dict[str, int] = dict()       # available after vectorization
+        self._term_info: Dict[int, int] = dict()             # available after vectorization
+        self._term_info_idf: Dict[int, int] = dict()         # available after vectorization
         self._vectorized: bool = False
 
     def __str__(self):
@@ -234,6 +238,48 @@ class DocumentsVectorizer:
 
         self._vectorized = True
 
+        log(info="Computing terms information... ")
+
+        self._term_info = self.get_relevant_terms(vectors=self._document_vectors, similarity=SIMILARITY)
+
+        document_vector_idf = self._document_vectors[:, self._idf_permutation]
+        self._term_info_idf = self.get_relevant_terms(vectors=document_vector_idf, similarity=SIMILARITY)
+
+    @staticmethod
+    def get_relevant_terms(vectors: csr_matrix, similarity: float) -> Dict[int, int]:
+        """
+        For each document provides term-id such that previous terms are sufficient
+        :return:
+        """
+
+        def get_relevant_term(row: int, max_doc_: np.ndarray) -> int:
+
+            doc = vectors[row]
+
+            _, term_ids = doc.nonzero()  # terms in document
+            term_ids.sort()
+
+            k = term_ids[0]
+
+            for k in term_ids:
+
+                max_doc_first_k = max_doc_[:k+1]
+                doc_first_k = doc[:, :k+1]
+                sim = cosine_similarity(max_doc_first_k.reshape(1, -1), doc_first_k)[0][0]
+
+                if sim > similarity:
+                    break
+
+            return k
+
+        max_doc = vectors.max(axis=0).toarray().flatten()
+
+
+        return {
+            i : get_relevant_term(row=i, max_doc_=max_doc)
+            for i in list(range(vectors.shape[0]))
+        }
+
     def _check_vectorized(self):
         """
         Check if sparse vectorization was computed
@@ -269,6 +315,13 @@ class DocumentsVectorizer:
         log(info="Saving inverse mapping")
         out_inverse_map = get_inverse_mapping_file(data_name=self._data_name)
         save_inverse_mapping(dict_=self.inverse_mapping, path_=out_inverse_map)
+
+        log(info="Saving terms info")
+        terms_info_file = get_terms_info_file(data_name=self._data_name)
+        save_terms_info(dict_=self._term_info, path_=terms_info_file)
+
+        terms_info_idf_file = get_terms_info_idf_file(data_name=self._data_name)
+        save_terms_info(dict_=self._term_info_idf, path_=terms_info_idf_file)
 
 
 class DocumentsSketching:

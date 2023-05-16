@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import itertools
-import math
 import time
 from abc import ABC, abstractmethod
 from itertools import combinations
-from typing import Dict, List, Set
+from typing import Dict, List
 
-import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.metrics.pairwise import cosine_similarity, pairwise_distances
 from sklearn.preprocessing import OneHotEncoder
@@ -86,14 +83,6 @@ class SimilarityPairsEvaluation(ABC):
         """
         self._check_evaluated()
         return self._results[self.TIME_KEY]
-
-    """@property
-    def preprocessing_time(self):
-        \"""
-        :return: evaluation preprocessing time
-        \"""
-        self._check_evaluated()
-        return self._results[self.PREPROCESSING_KEY]"""
 
     @property
     def score(self) -> float:
@@ -197,8 +186,8 @@ class ExactSolutionEvaluation(SimilarityPairsEvaluation):
         # """
         log(info="Computing cosine similarity. ")
 
-        cos_sim_matrix = cosine_similarity(vectors)
-        are_similar = cos_sim_matrix > self._threshold
+        similarity_matrix = vectors.dot(vectors.transpose())
+        are_similar = similarity_matrix > self._threshold
 
         log(info="Inspecting similarities. ")
 
@@ -309,8 +298,8 @@ class DimensionalityHeuristicEvaluation(SimilarityPairsEvaluation):
 
         log(info="Computing similarities. ")
 
-        cos_sim_matrix = cosine_similarity(vectors)
-        are_similar = cos_sim_matrix > self._threshold
+        sim_matrix = vectors.dot(vectors.transpose())
+        are_similar = sim_matrix > self._threshold
 
         log(info="Inspecting similarities. ")
 
@@ -388,8 +377,8 @@ class DocSizeHeuristicEvaluation(SimilarityPairsEvaluation):
 
         log(info="Computing similarities. ")
 
-        cos_sim_matrix = cosine_similarity(vectors)
-        are_similar = cos_sim_matrix > self._threshold
+        sim_matrix = vectors.dot(vectors.transpose())
+        are_similar = sim_matrix > self._threshold
 
         pairs = []
 

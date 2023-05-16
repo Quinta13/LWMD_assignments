@@ -13,6 +13,7 @@ from typing import List, Iterator, Dict, Tuple
 import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.random_projection import johnson_lindenstrauss_min_dim, SparseRandomProjection
 
 from assignment3.io_ import check_dataset_downloaded, log, get_files, read_jsonl, check_dataset_vectorized, \
@@ -249,14 +250,15 @@ class DocumentsCollection:
 class DocumentVectors:
     """ This class provide a vector view of the documents """
 
-    def __init__(self, data_name: str):
+    def __init__(self, data_name: str, idf_order: bool = False):
         """
 
         :param data_name: name of dataset in datasets folder
-        :param new_dim: target dimensionality
+        :param idf_order: if columns vectors are sorted by idf
         """
 
         self._data_name = data_name
+        self._idf_order = idf_order
 
         if not check_dataset_vectorized(data_name=data_name):
             raise Exception(f"{data_name} dataset is not vectorized. "
@@ -350,7 +352,7 @@ class DocumentVectors:
         log(info="Loading vectors. ")
 
         file = get_vector_file(data_name=self._data_name)
-        mat: csr_matrix = load_vectors(path_=file)
+        mat: csr_matrix = load_vectors(path_=file, idf_order=self._idf_order)
 
         return mat
 
@@ -385,7 +387,8 @@ class DocumentVectors:
         if not self._reduced:
             raise Exception("Dimensionality reduction was not performed yet")
 
-    # MAP INPUT
+    # MAP REDUCE
+
     @property
     def documents_info(self) -> List[Tuple[str, List[int, float]]]:
         """
@@ -399,6 +402,7 @@ class DocumentVectors:
             :param row: row corresponding to certain document
             :return: list of tuples (term-id; entry value)
             """
+
 
             doc: csr_matrix = self.vectors[row]
 

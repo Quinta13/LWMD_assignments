@@ -55,9 +55,9 @@ def tokenize(text: str, language: str) -> List[str]:
     preprocessed_tokens = []
     for token in tokens:
         token = token.lower()
-        if token not in stop_words and \
-                not contains_number(token) and \
-                not contains_east_asia_chars(token):
+        # if token not in stop_words and \
+        if not contains_number(token) and \
+           not contains_east_asia_chars(token):
             stemmed_token = stemmer.stem(token)
             lemmatized_token = lemmatizer.lemmatize(stemmed_token)
             preprocessed_tokens.append(lemmatized_token)

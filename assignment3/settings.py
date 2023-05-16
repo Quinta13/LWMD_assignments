@@ -4,6 +4,9 @@ This file contain configuration settings
 
 import os.path as path
 
+# SIMILARITY
+SIMILARITY = 0.95
+
 # INPUT FILES and DIRECTORIES
 DATASETS_DIR_NAME = "datasets"
 CORPUS = 'corpus.jsonl'
@@ -17,6 +20,8 @@ VECTOR_FILE = 'vector'
 IDF_PERMUTATION = 'info_idf_permutation'
 VECTOR_MAPPING = 'info_mapping'
 VECTOR_INVERSE_MAPPING = 'info_inverse_mapping'
+TERMS_INFO = 'info_terms'
+TERMS_INFO_IDF = 'info_terms_info_idf'
 
 # SKETCHING FILES and DIRECTORIES
 SKETCHING_DIR = 'sketching'

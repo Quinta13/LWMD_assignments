@@ -17,7 +17,7 @@ from scipy.sparse import csr_matrix
 from assignment3.settings import LOG, DATASETS_DIR_NAME, CORPUS, QUERIES, TEST, VECTOR_DIR, IMAGES_DIR, \
     EXACT_SOLUTION, \
     EVALUATION_DIR, VECTOR_MAPPING, VECTOR_INVERSE_MAPPING, IO_LOG, VECTOR_FILE, IDF_PERMUTATION, SKETCHING_DIR, \
-    SKETCHING_FILE
+    SKETCHING_FILE, TERMS_INFO, TERMS_INFO_IDF
 
 
 # LOGGER
@@ -79,8 +79,8 @@ def get_files(data_name: str) -> Tuple[str, str, str]:
     :return: path to corpus file, queries file and test file
     """
     return path.join(get_dataset_dir(data_name=data_name), CORPUS), \
-           path.join(get_dataset_dir(data_name=data_name), QUERIES), \
-           path.join(get_dataset_dir(data_name=data_name), TEST)
+        path.join(get_dataset_dir(data_name=data_name), QUERIES), \
+        path.join(get_dataset_dir(data_name=data_name), TEST)
 
 
 def check_dataset_downloaded(data_name: str) -> bool:
@@ -91,7 +91,7 @@ def check_dataset_downloaded(data_name: str) -> bool:
     """
     corpus, queries, test = get_files(data_name=data_name)
     return path.exists(path=get_dataset_dir(data_name=data_name)) and \
-           path.exists(path=corpus) and path.exists(path=queries) and path.exists(path=test)
+        path.exists(path=corpus) and path.exists(path=queries) and path.exists(path=test)
 
 
 # VECTORIZATION DIRECTORY and FILE
@@ -153,6 +153,40 @@ def get_inverse_mapping_file(data_name: str) -> str:
     return path.join(vector_dir, f"{VECTOR_INVERSE_MAPPING}.json")
 
 
+def get_inverse_mapping_file(data_name: str) -> str:
+    """
+    Return path to vector inverse mapping file
+    :param data_name: name of dataset in datasets folder
+    :return: path to vector inverse mapping file
+    """
+    vector_dir = get_vector_dir(data_name=data_name)
+
+    return path.join(vector_dir, f"{VECTOR_INVERSE_MAPPING}.json")
+
+
+def get_terms_info_file(data_name: str) -> str:
+    """
+    Return path to terms info file
+    :param data_name: name of dataset in datasets folder
+    :return: path to vector terms info file
+    """
+
+    vector_dir = get_vector_dir(data_name=data_name)
+
+    return path.join(vector_dir, f"{TERMS_INFO}.json")
+
+
+def get_terms_info_idf_file(data_name: str) -> str:
+    """
+    Return path to terms info idf file
+    :param data_name: name of datasterms info idf vector inverse file
+    """
+
+    vector_dir = get_vector_dir(data_name=data_name)
+
+    return path.join(vector_dir, f"{TERMS_INFO_IDF}.json")
+
+
 def check_dataset_vectorized(data_name: str) -> bool:
     """
     Check if a certain dataset was vectorized
@@ -160,15 +194,20 @@ def check_dataset_vectorized(data_name: str) -> bool:
     :return: true if dataset is vectorized, false otherwise
     """
     vector_file = get_vector_file(data_name=data_name)
-    permutation_file = get_idf_permutation_file(data_name=data_name)
+
+    permutation = get_idf_permutation_file(data_name=data_name)
     mapping = get_mapping_file(data_name=data_name)
     inverse_mapping = get_inverse_mapping_file(data_name=data_name)
+    terms_info = get_terms_info_file(data_name=data_name)
+    terms_info_idf = get_terms_info_idf_file(data_name=data_name)
 
     return path.exists(path=get_vector_dir(data_name=data_name)) and \
-           path.exists(path=vector_file) and \
-           path.exists(path=permutation_file) and \
-           path.exists(path=mapping) and \
-           path.exists(path=inverse_mapping)
+        path.exists(path=vector_file) and \
+        path.exists(path=permutation) and \
+        path.exists(path=mapping) and \
+        path.exists(path=inverse_mapping) and\
+        path.exists(path=terms_info) and \
+        path.exists(path=terms_info_idf)
 
 
 # EVALUATION
@@ -213,7 +252,7 @@ def check_exact_evaluation(data_name: str) -> bool:
     """
     exact_solution_file = get_exact_solution_file(data_name=data_name)
     return path.exists(path=get_evaluation_dir(data_name=data_name)) and \
-           path.exists(path=exact_solution_file)
+        path.exists(path=exact_solution_file)
 
 
 # SKETCHING
@@ -247,7 +286,7 @@ def check_sketching(data_name: str) -> bool:
     """
     sketch_file = get_signatures_file(data_name=data_name)
     return path.exists(path=get_sketching_dir(data_name=data_name)) and \
-           path.exists(path=sketch_file)
+        path.exists(path=sketch_file)
 
 
 # IMAGE DIRECTORY
@@ -506,7 +545,7 @@ def _load_idf_permutation(path_: str) -> List[int]:
     :param path_: local file path
     :return: idf permutation
     """
-    list_str =  _load_json(path_=path_)
+    list_str = _load_json(path_=path_)
     return [int(i) for i in list_str]
 
 
@@ -528,3 +567,24 @@ def load_signatures(path_: str) -> Dict[str, List[int]]:
     """
     dict_ = _load_json(path_=path_)
     return {k: [int(i) for i in v] for k, v in dict_.items()}
+
+
+def save_terms_info(dict_: Dict[int, int], path_: str):
+    """
+    Save terms information to disk
+    :param dict_: terms info
+    :param path_: local file path
+    """
+    dict_str = {k: str(v) for k, v in dict_.items()}
+    _store_json(obj=dict_str, path_=path_)
+
+
+def load_terms_info(path_: str) -> Dict[int, int]:
+    """
+    Load terms information from disk
+    :padict_ = _load_json(path_=path_)
+    return {k: int(v) for k, v in dict_.items()}ram path_: local file path
+    :return: terms info
+    """
+    dict_ = _load_json(path_=path_)
+    return {k: int(v) for k, v in dict_.items()}
