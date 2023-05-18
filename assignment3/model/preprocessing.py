@@ -261,22 +261,21 @@ class DocumentsVectorizer:
 
             k = term_ids[0]
 
+            tot_sim = 0.
+
             for k in term_ids:
 
-                max_doc_first_k = max_doc_[:k+1]
-                doc_first_k = doc[:, :k+1]
-                sim = cosine_similarity(max_doc_first_k.reshape(1, -1), doc_first_k)[0][0]
+                tot_sim += max_doc_[k] * vectors[row, k]
 
-                if sim > similarity:
+                if tot_sim > 0.9:
                     break
 
             return k
 
         max_doc = vectors.max(axis=0).toarray().flatten()
 
-
         return {
-            i : get_relevant_term(row=i, max_doc_=max_doc)
+            i: get_relevant_term(row=i, max_doc_=max_doc)
             for i in list(range(vectors.shape[0]))
         }
 

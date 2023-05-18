@@ -575,7 +575,8 @@ def save_terms_info(dict_: Dict[int, int], path_: str):
     :param dict_: terms info
     :param path_: local file path
     """
-    dict_str = {k: str(v) for k, v in dict_.items()}
+    dict_str = {str(k): int(v) for k, v in dict_.items()}
+    print(dict_str)
     _store_json(obj=dict_str, path_=path_)
 
 
@@ -587,4 +588,4 @@ def load_terms_info(path_: str) -> Dict[int, int]:
     :return: terms info
     """
     dict_ = _load_json(path_=path_)
-    return {k: int(v) for k, v in dict_.items()}
+    return {int(k): v for k, v in dict_.items()}

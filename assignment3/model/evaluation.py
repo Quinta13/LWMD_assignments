@@ -181,12 +181,9 @@ class ExactSolutionEvaluation(SimilarityPairsEvaluation):
         pairs = []
         n_docs, _ = vectors.shape
 
-        # WAY 1
-
-        # """
         log(info="Computing cosine similarity. ")
 
-        similarity_matrix = vectors.dot(vectors.transpose())
+        similarity_matrix = cosine_similarity(vectors)
         are_similar = similarity_matrix > self._threshold
 
         log(info="Inspecting similarities. ")
@@ -196,30 +193,6 @@ class ExactSolutionEvaluation(SimilarityPairsEvaluation):
                 id_1, _ = self._document_vectors.get_row_info(row=i)
                 id_2, _ = self._document_vectors.get_row_info(row=j)
                 pairs.append((id_1, id_2))
-        # """
-
-        # WAY 2
-
-        """
-
-        n_combs = math.comb(n_docs, 2)
-
-        combs = itertools.combinations(range(n_docs), 2)
-
-        for iter_, comb in enumerate(combs):
-            print(f"{iter_ * 100 / n_combs:3f}%")
-
-            i, j = comb
-
-            row_1 = vectors[i].toarray()
-            row_2 = vectors[j].toarray()
-
-            if cosine_similarity(X=row_1, Y=row_2) > self._threshold:
-                id_1, _ = self._document_vectors.get_row_info(row=i)
-                id_2, _ = self._document_vectors.get_row_info(row=j)
-                pairs.append((id_1, id_2))
-                
-        """
 
         t2 = time.perf_counter()
 
@@ -298,8 +271,8 @@ class DimensionalityHeuristicEvaluation(SimilarityPairsEvaluation):
 
         log(info="Computing similarities. ")
 
-        sim_matrix = vectors.dot(vectors.transpose())
-        are_similar = sim_matrix > self._threshold
+        similarity_matrix = cosine_similarity(vectors)
+        are_similar = similarity_matrix > self._threshold
 
         log(info="Inspecting similarities. ")
 
@@ -316,8 +289,7 @@ class DimensionalityHeuristicEvaluation(SimilarityPairsEvaluation):
         self._results = {
             self.PAIRS_KEY: pairs,
             self.THRESHOLD_KEY: self._threshold,
-            self.TIME_KEY: t2 - t1,
-            # self.PREPROCESSING_KEY: pt2 - pt1
+            self.TIME_KEY: t2 - t1
         }
 
         self._evaluated = True
@@ -369,20 +341,17 @@ class DocSizeHeuristicEvaluation(SimilarityPairsEvaluation):
 
         log(info="Evaluating. ")
 
-        vectors: csr_matrix = self._document_vectors.vectors
-
         t1 = time.perf_counter()
 
-        n_docs, _ = vectors.shape
-
-        log(info="Computing similarities. ")
-
-        sim_matrix = vectors.dot(vectors.transpose())
-        are_similar = sim_matrix > self._threshold
+        vectors: csr_matrix = self._document_vectors.vectors
 
         pairs = []
+        n_docs, _ = vectors.shape
 
-        use_docsize = self._k is not None
+        log(info="Computing cosine similarity. ")
+
+        similarity_matrix = cosine_similarity(vectors)
+        are_similar = similarity_matrix > self._threshold
 
         log(info="Inspecting similarities. ")
 
@@ -395,8 +364,8 @@ class DocSizeHeuristicEvaluation(SimilarityPairsEvaluation):
                 id_2, len_2 = self._document_vectors.get_row_info(row=j)
 
                 # -- DOC-SIZE HEURISTIC --
-                if use_docsize and len_1 / len_2 > self._k:
-                    break
+                if len_1 / len_2 > self._k:
+                   break
                 # ------------------------
 
                 if are_similar[i, j]:
@@ -437,8 +406,6 @@ class MinHashingHeuristicEvaluation(SimilarityPairsEvaluation):
         """
 
         super().__init__(data_name, threshold)
-
-        # heuristics params, if None heuristic is not used
 
         self._signatures: Dict[str, List[int]] = self._load_signatures()
 

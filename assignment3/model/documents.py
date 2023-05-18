@@ -17,7 +17,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.random_projection import johnson_lindenstrauss_min_dim, SparseRandomProjection
 
 from assignment3.io_ import check_dataset_downloaded, log, get_files, read_jsonl, check_dataset_vectorized, \
-    load_vectors, get_mapping_file, load_mapping, get_inverse_mapping_file, load_inverse_mapping, get_vector_file
+    load_vectors, get_mapping_file, load_mapping, get_inverse_mapping_file, load_inverse_mapping, get_vector_file, \
+    get_terms_info_file, get_terms_info_idf_file, load_terms_info
 from assignment3.settings import DEFAULT_LANGUAGE
 from assignment3.utils import tokenize
 
@@ -390,7 +391,7 @@ class DocumentVectors:
     # MAP REDUCE
 
     @property
-    def documents_info(self) -> List[Tuple[str, List[int, float]]]:
+    def documents_info(self) -> List[Tuple[str, int, List[int, float]]]:
         """
         Transpose vectors information in order to be processed by Mapper
         :return: list of tuples (doc-id ; list(term-id; value))
@@ -403,7 +404,6 @@ class DocumentVectors:
             :return: list of tuples (term-id; entry value)
             """
 
-
             doc: csr_matrix = self.vectors[row]
 
             _, terms = doc.nonzero()
@@ -414,10 +414,17 @@ class DocumentVectors:
 
             return list(zip(terms, entries))
 
+        terms_info_file: str = get_terms_info_idf_file(data_name=self._data_name) \
+            if self._idf_order else \
+            get_terms_info_file(data_name=self._data_name)
+
+        terms_info: Dict[int, int] = load_terms_info(path_=terms_info_file)
+
         return [
             (
-                self.get_row_info(row=index)[0],  # doc-id
+                self.get_row_info(row=index)[0],    # doc-id
+                terms_info[index],                  # term-info
                 extract_nonzero_entries(row=index)  # list(term-id, value)
             )
-            for index in list(range(len(self)))
+            for index in list(range(len(self)))  # row-id
         ]

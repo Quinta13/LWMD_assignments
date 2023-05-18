@@ -5,7 +5,7 @@ This file contain configuration settings
 import os.path as path
 
 # SIMILARITY
-SIMILARITY = 0.95
+SIMILARITY = 0.80
 
 # INPUT FILES and DIRECTORIES
 DATASETS_DIR_NAME = "datasets"
@@ -17,11 +17,11 @@ TEST = path.join('qrels', 'test.tsv')
 VECTOR_DIR = 'vector'
 VECTOR_FILE = 'vector'
 
-IDF_PERMUTATION = 'info_idf_permutation'
 VECTOR_MAPPING = 'info_mapping'
 VECTOR_INVERSE_MAPPING = 'info_inverse_mapping'
+IDF_PERMUTATION = 'info_idf_permutation'
 TERMS_INFO = 'info_terms'
-TERMS_INFO_IDF = 'info_terms_info_idf'
+TERMS_INFO_IDF = 'info_terms_idf'
 
 # SKETCHING FILES and DIRECTORIES
 SKETCHING_DIR = 'sketching'
