@@ -233,7 +233,7 @@ class DocumentsCollection:
         :return: document collection as a dictionary
         """
 
-        log(info="Parsing documents. ")
+        log(info="Parsing documents... ")
 
         file_, _, _ = get_files(self._data_name)
 
@@ -350,7 +350,7 @@ class DocumentVectors:
         :return: matrix of vectorized documents
         """
 
-        log(info="Loading vectors. ")
+        log(info="Loading vectors... ")
 
         file = get_vector_file(data_name=self._data_name)
         mat: csr_matrix = load_vectors(path_=file, idf_order=self._idf_order)
@@ -363,7 +363,7 @@ class DocumentVectors:
         :return: mapping dictionary
         """
 
-        log(info="Loading mapping. ")
+        log(info="Loading mapping... ")
 
         file = get_mapping_file(data_name=self._data_name)
 
@@ -375,7 +375,7 @@ class DocumentVectors:
         :return: inverse mapping dictionary
         """
 
-        log(info="Loading inverse mapping. ")
+        log(info="Loading inverse mapping... ")
 
         file = get_inverse_mapping_file(data_name=self._data_name)
 
@@ -390,40 +390,56 @@ class DocumentVectors:
 
     # MAP REDUCE
 
-    @property
-    def documents_info(self) -> List[Tuple[str, int, List[int, float]]]:
+    def get_documents_info(self, similarity: float) -> List[Tuple[str, int, List[int, float]]]:
         """
-        Transpose vectors information in order to be processed by Mapper
-        :return: list of tuples (doc-id ; list(term-id; value))
+        Transform document vectors information in order to be processed by map-reduce framework
+        :param similarity: similarity threshold between a pair of documents
+        :return: list of triplets:
+            - doc-id, represented as a string
+            - term-threshold, referring to the index of a specific column up to which do not map terms
+            - document vector, represent the sparse vector as a list of pairs (column, value) for each non-zero entries,
+                where the column is actually a term-id
         """
 
         def extract_nonzero_entries(row: int) -> List[int, float]:
             """
-            Return row mapping non-zero entries (term-id; entry value)
-            :param row: row corresponding to certain document
-            :return: list of tuples (term-id; entry value)
+            Transform the row of the matrix in list of pairs (term-id, value) for all non-zero values
+            :param row: row in the matrix corresponding to certain document
+            :return: list of tuples (term-id; value)
             """
 
+            # extract the row
             doc: csr_matrix = self.vectors[row]
 
+            # extract term-ids corresponding to non-zero entries
             _, terms = doc.nonzero()
             terms = [int(t) for t in terms]
             terms.sort()
 
+            # extract entries corresponding to term-ids
             entries = doc[0, terms].toarray().tolist()[0]
 
             return list(zip(terms, entries))
 
+        # read terms_info_file depending on column order
+        # the file contains precomputed term-threshold for each document
         terms_info_file: str = get_terms_info_idf_file(data_name=self._data_name) \
             if self._idf_order else \
             get_terms_info_file(data_name=self._data_name)
 
-        terms_info: Dict[int, int] = load_terms_info(path_=terms_info_file)
+        terms_info: Dict[int, Dict[float, int]] = load_terms_info(path_=terms_info_file)
+
+        # get all precomputed similarity threshold
+        sim_thresholds = list(terms_info[0].keys())
+
+        # if requested similarity was not precomputed, raise an error
+        if similarity not in sim_thresholds:
+            raise Exception(f"Terms info was not computed for {similarity} similarity, but {sim_thresholds} are available")
 
         return [
             (
                 self.get_row_info(row=index)[0],    # doc-id
-                terms_info[index],                  # term-info
+                terms_info[index][similarity],      # term-info
                 extract_nonzero_entries(row=index)  # list(term-id, value)
             )
             for index in list(range(len(self)))  # row-id
