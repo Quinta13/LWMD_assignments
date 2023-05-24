@@ -22,7 +22,7 @@ from scipy.sparse import csr_matrix
 from assignment3.settings import LOG, DATASETS_DIR_NAME, CORPUS, QUERIES, TEST, VECTOR_DIR, IMAGES_DIR, \
     EXACT_SOLUTION, \
     EVALUATION_DIR, VECTOR_MAPPING, VECTOR_INVERSE_MAPPING, IO_LOG, VECTOR_FILE, IDF_PERMUTATION, \
-    TERMS_INFO, TERMS_INFO_IDF
+    TERMS_INFO, TERMS_INFO_IDF, SCRIPT_DIR
 
 
 # ------------ LOGGER ------------
@@ -107,6 +107,14 @@ def get_dataset_main_dir() -> str:
     """
 
     return path.join(get_root_dir(), DATASETS_DIR_NAME)
+
+
+def get_script_dir() -> str:
+    """
+    :return: path to the script directory
+    """
+
+    return path.join(get_root_dir(), SCRIPT_DIR)
 
 
 def get_dataset_dir(data_name: str) -> str:
@@ -294,7 +302,7 @@ def get_images_dir(data_name: str) -> str:
     return path.join(get_dataset_main_dir(), data_name, IMAGES_DIR)
 
 
-# IO OPERATIONS for SPECIFIC FORMAT
+# -------------- IO OPERATIONS for SPECIFIC FORMAT --------------
 
 def _check_extension(path_: str, ext: str):
     """

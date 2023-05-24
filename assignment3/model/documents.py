@@ -1,8 +1,8 @@
 """
 This file provide three classes to handle
-- A single document
-- A collection of document
-- A collection of vectorized documents
+- Document: a single document, with its id and content,
+- A collection of document, computing tdf-idf and inspecting content
+- A collection of vectorized documents, which provides some method for mapping rows in original documents and viceversa
 """
 
 from __future__ import annotations
@@ -13,7 +13,6 @@ from typing import List, Iterator, Dict, Tuple
 import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.random_projection import johnson_lindenstrauss_min_dim, SparseRandomProjection
 
 from assignment3.io_ import check_dataset_downloaded, log, get_files, read_jsonl, check_dataset_vectorized, \

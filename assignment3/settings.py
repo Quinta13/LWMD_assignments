@@ -24,6 +24,9 @@ TERMS_INFO_IDF = 'info_terms_idf'
 EVALUATION_DIR = 'evaluation'
 EXACT_SOLUTION = 'exact_solution'
 
+# SCRIPT
+SCRIPT_DIR = 'scripts'
+
 # IMAGE DIRECTORY
 IMAGES_DIR = "images"
 

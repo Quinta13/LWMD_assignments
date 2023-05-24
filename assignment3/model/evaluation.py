@@ -1,3 +1,7 @@
+"""
+This class provides some classes for sequential pairwise-similarity evaluation
+"""
+
 from __future__ import annotations
 
 import time
@@ -106,8 +110,11 @@ class SimilarityPairsEvaluation(ABC):
     def evaluate(self):
         """
         Evaluate the model
+        This method should perform pairwise similarity evaluation and save results
+            in the dictionary providing pairs found, level of similarity and elapsed time
+        Finally it must set evaluated flag on
         """
-        # TODO what it should do
+
         pass
 
     def _load_vectors(self) -> csr_matrix:
@@ -198,8 +205,7 @@ class ExactSolutionEvaluation(SimilarityPairsEvaluation):
         self._results = {
             self.PAIRS_KEY: pairs,
             self.THRESHOLD_KEY: self._threshold,
-            self.TIME_KEY: t2 - t1,
-            # self.PREPROCESSING_KEY: 0
+            self.TIME_KEY: t2 - t1
         }
 
         self._evaluated = True
@@ -230,8 +236,6 @@ class DimensionalityHeuristicEvaluation(SimilarityPairsEvaluation):
         """
 
         super().__init__(data_name, threshold)
-
-        # heuristics params, if None heuristic is not used
 
         # dim_reduction
         if not 0 < eps < 1:
