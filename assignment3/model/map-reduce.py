@@ -4,6 +4,7 @@ This file contains map and reduce implementation
 
 from pyspark.rdd import RDD
 
+HEURISTIC_K = 1.2
 
 def document_map(
         doc_info: tuple[str, int, list[tuple[int, float]]]
@@ -56,17 +57,25 @@ def documents_reduce(docs: list[tuple[int, int, list[tuple[int, float]]]]) -> li
     # list of output pairs
     pairs = []
 
+    # DOC-SIZE HEURISTIC pt. 1 - sort items for document length
+    docs = sorted(docs, key=lambda x: len(x[2]), reverse=True)
+
     # total number of documents
     n_docs = len(docs)
 
     # loop among all possible pairs
     for i in range(n_docs - 1):
 
+        doc1_id, term_id, doc1 = docs[i]
+
         for j in range(i + 1, n_docs):
 
-            doc1_id, term_id, doc1 = docs[i]
             doc2_id, _, doc2 = docs[j]  # since the operation is an aggregation by key,
             # term_id is expected to be the same
+
+            # DOC-SIZE HEURISTIC pt. 2 - skip if too-high length mismatch
+            if len(doc1) / len(doc2) > HEURISTIC_K:
+                break
 
             # ----------------- OPTIMIZATION 2 -----------------
 
