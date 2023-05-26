@@ -307,12 +307,12 @@ class DimensionalityHeuristicEvaluation(SimilarityPairsEvaluation):
         self._save(file_name=file_name)
 
 
-class DocSizeHeuristicEvaluation(SimilarityPairsEvaluation):
+class DocTermsHeuristicEvaluation(SimilarityPairsEvaluation):
     """ This class compute pairs using different heuristics:
-        - dimensionality reduction
+        - term size skip
     """
 
-    _CLASS_NAME = "DocSizeHeuristicEvaluation"
+    _CLASS_NAME = "DocTermsHeuristicEvaluation"
 
     # DUNDER
 
@@ -320,7 +320,7 @@ class DocSizeHeuristicEvaluation(SimilarityPairsEvaluation):
                  k: float | None = None):
         """
         :param data_name: dataset name in datasets folder
-        :param k: doc-size multiplication factor
+        :param k: doc-terms multiplication factor
         """
 
         super().__init__(data_name, threshold)
@@ -366,7 +366,7 @@ class DocSizeHeuristicEvaluation(SimilarityPairsEvaluation):
 
                 id_2, len_2 = self._document_vectors.get_row_info(row=j)
 
-                # -- DOC-SIZE HEURISTIC --
+                # -- DOC-TERMS HEURISTIC --
                 if len_1 / len_2 > self._k:
                     break
                 # ------------------------
@@ -379,8 +379,7 @@ class DocSizeHeuristicEvaluation(SimilarityPairsEvaluation):
         self._results = {
             self.PAIRS_KEY: pairs,
             self.THRESHOLD_KEY: self._threshold,
-            self.TIME_KEY: t2 - t1,
-            # self.PREPROCESSING_KEY: 0
+            self.TIME_KEY: t2 - t1
         }
 
         self._evaluated = True

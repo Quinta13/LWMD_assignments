@@ -57,7 +57,7 @@ def documents_reduce(docs: list[tuple[int, int, list[tuple[int, float]]]]) -> li
     # list of output pairs
     pairs = []
 
-    # DOC-SIZE HEURISTIC pt. 1 - sort items for document length
+    # DOC-TERMS HEURISTIC pt. 1 - sort items for document length
     docs = sorted(docs, key=lambda x: len(x[2]), reverse=True)
 
     # total number of documents
@@ -73,7 +73,7 @@ def documents_reduce(docs: list[tuple[int, int, list[tuple[int, float]]]]) -> li
             doc2_id, _, doc2 = docs[j]  # since the operation is an aggregation by key,
             # term_id is expected to be the same
 
-            # DOC-SIZE HEURISTIC pt. 2 - skip if too-high length mismatch
+            # DOC-TERMS HEURISTIC pt. 2 - skip if too-high length mismatch
             if len(doc1) / len(doc2) > HEURISTIC_K:
                 break
 
